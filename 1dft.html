@@ -57,20 +57,7 @@
               ctx.restore();
           }
 
-          $('canvas#src').on('mousedown mousemove', function(e) {
-              if (e.which != 1) return;
-              e.preventDefault();
-
-              var c = getUserCoordinates(e);
-              var x = Math.round(c.x);
-              var y = c.y;
-              data[x] = y;
-
-              // Fourier transform
-              var fft = new FFT.complex(num_points, false);
-              fft.simple(data_fted, data, 'real');
-
-              // draw
+          function updateSourceView() {
               withContextOf($('canvas#src')[0], function(ctx) {
                   // lines
                   ctx.beginPath();
@@ -86,6 +73,9 @@
                       ctx.stroke();
                   }
               });
+          }
+
+          function updateSpectrumView() {
               withContextOf($('canvas#fted')[0], function(ctx) {
                   // lines
                   ctx.beginPath();
@@ -101,39 +91,9 @@
                       ctx.stroke();
                   }
               });
-          });
-          $('canvas#fted').on('mousedown mousemove', function(e) {
-              if (e.which != 1) return;
-              e.preventDefault();
+          }
 
-              var c = getUserCoordinates(e);
-              var x = Math.round(c.x);
-              var y = c.y;
-              data_fted[2 * x] = num_points * y;  // it's sufficient to handle real parts of complex numbers
-
-              // Inverse Fourier transform
-              var ifft = new FFT.complex(num_points, true);
-              ifft.simple(data_recon, data_fted);
-              for (var i = 0; i < data_recon.length; ++i) {
-                  data_recon[i] /= num_points;
-              }
-
-              // draw
-              withContextOf($('canvas#fted')[0], function(ctx) {
-                  // lines
-                  ctx.beginPath();
-                  ctx.moveTo(0, 0);                ctx.lineTo(num_points - 1, 0);
-                  ctx.moveTo(0, -10);              ctx.lineTo(0, 10);
-                  ctx.moveTo(num_points - 1, -10); ctx.lineTo(num_points - 1, 10);
-                  ctx.stroke();
-
-                  // points
-                  for (var i = 0; i < num_points; ++i) {
-                      ctx.beginPath();
-                      ctx.arc(i, data_fted[2 * i] / num_points, 0.5, 0, 2 * Math.PI, false);
-                      ctx.stroke();
-                  }
-              });
+          function updateReconstructionView() {
               withContextOf($('canvas#recon')[0], function(ctx) {
                   // lines
                   ctx.beginPath();
@@ -149,6 +109,54 @@
                       ctx.stroke();
                   }
               });
+          }
+
+          function updateSpectrumData() {
+              var fft = new FFT.complex(num_points, false);
+              fft.simple(data_fted, data, 'real');
+          }
+
+          function updateReconstructionData() {
+              var ifft = new FFT.complex(num_points, true);
+              ifft.simple(data_recon, data_fted);
+              for (var i = 0; i < data_recon.length; ++i) {
+                  data_recon[i] /= num_points;
+              }
+          }
+
+          $('canvas#src').on('mousedown mousemove', function(e) {
+              if (e.which != 1) return;
+              e.preventDefault();
+
+              var c = getUserCoordinates(e);
+              var x = Math.round(c.x);
+              var y = c.y;
+              data[x] = y;
+
+              // Fourier transform and inverse Fourier transform
+              updateSpectrumData();
+              updateReconstructionData();
+
+              // draw
+              updateSourceView();
+              updateSpectrumView();
+              updateReconstructionView();
+          });
+          $('canvas#fted').on('mousedown mousemove', function(e) {
+              if (e.which != 1) return;
+              e.preventDefault();
+
+              var c = getUserCoordinates(e);
+              var x = Math.round(c.x);
+              var y = c.y;
+              data_fted[2 * x] = num_points * y;  // it's sufficient to handle real parts of complex numbers
+
+              // Inverse Fourier transform
+              updateReconstructionData();
+
+              // draw
+              updateSpectrumView();
+              updateReconstructionView();
           });
       });
     </script>
