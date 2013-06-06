@@ -35,14 +35,18 @@
       $(document).ready(function() {
           "use strict";
 
-          function withContextOf(canvas, f) {
+          function withContext(canvas, f) {
               var ctx = canvas.getContext('2d');
-              ctx.clearRect(0, 0, canvas.width, canvas.height);
-
               ctx.save();
-
               f(ctx);
+              ctx.restore();
+          }
 
+          function withContextCleared(canvas, f) {
+              var ctx = canvas.getContext('2d');
+              ctx.save();
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              f(ctx);
               ctx.restore();
           }
 
@@ -93,7 +97,7 @@
           }
 
           function drawSpectrumData(sdata, canvas) {
-              withContextOf(canvas, function(ctx) {
+              withContextCleared(canvas, function(ctx) {
                   var idata = ctx.createImageData(canvas.width, canvas.height);
                   var n = sdata.width * sdata.height;
                   for (var i = 0; i < sdata.height; ++i) {
@@ -123,7 +127,7 @@
           }
 
           function drawReconstructedData(rdata, canvas) {
-              withContextOf(canvas, function(ctx) {
+              withContextCleared(canvas, function(ctx) {
                   var idata = ctx.createImageData(canvas.width, canvas.height);
                   var n = rdata.width * rdata.height;
                   for (var i = 0; i < rdata.height; ++i) {
@@ -187,11 +191,19 @@
                   highpass(sdata, r);
               }
               drawSpectrumData(sdata, spectrumCanvas);
+              withContext(spectrumCanvas, function(ctx) {
+                  var r = $('#radius_slider').slider('value');
+                  ctx.beginPath();
+                  ctx.arc(ctx.canvas.width / 2, ctx.canvas.height / 2, r, 0, 2 * Math.PI, false);
+                  ctx.strokeStyle = 'silver';
+                  ctx.lineWidth = 1;
+                  ctx.stroke();
+              });
               var rdata = iFFT2D(sdata);
               drawReconstructedData(rdata, reconstructionCanvas);
           }
 
-          withContextOf($('canvas#src')[0], function(ctx) {
+          withContextCleared($('canvas#src')[0], function(ctx) {
               var img = new Image();
               img.src = 'source.png';
               img.onload = function() {
