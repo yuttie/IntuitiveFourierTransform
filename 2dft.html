@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="UTF-8" />
+    <title>2次元フーリエ変換</title>
+    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/black-tie/jquery-ui.min.css" />
+    <style>
+      canvas {
+          border: 1px dashed black;
+      }
+      #radius_slider {
+          width: 300px;
+          margin-left: 0.5em;
+          margin-right: 0.5em;
+          display: inline-block;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="src" width="300" height="300"></canvas>
+    <canvas id="spectrum" width="300" height="300"></canvas>
+    <canvas id="recon" width="300" height="300"></canvas>
+    <div>
+      <label><input type="radio" name="type"   tabindex="0" value="none" checked="checked" />none</label>
+      <label><input type="radio" name="type"   tabindex="0" value="lowpass"  />lowpass</label>
+      <label><input type="radio" name="type"   tabindex="0" value="highpass" />highpass</label>
+      <div id="radius_slider" tabindex="0"></div>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.0.1/jquery.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
+    <script src="complex.js"></script>
+    <script>
+      $(document).ready(function() {
+          "use strict";
+
+          function withContextOf(canvas, f) {
+              var ctx = canvas.getContext('2d');
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+              ctx.save();
+
+              f(ctx);
+
+              ctx.restore();
+          }
+
+          function getPixelData(canvas) {
+              var ctx = canvas.getContext('2d');
+              var idata = ctx.getImageData(0, 0, canvas.width, canvas.height);
+              var data = new Float64Array(canvas.width * canvas.height);
+              for (var i = 0; i < data.length; ++i) {
+                  data[i] = (idata.data[4 * i + 0] + idata.data[4 * i + 1] + idata.data[4* i + 2]) / 3;
+              }
+              return {data: data, width: canvas.width, height: canvas.height};
+          }
+
+          function FFT2D(pdata) {
+              var data = pdata.data;
+              var width = pdata.width;
+              var height = pdata.height;
+              var data_fted1 = new Float64Array(2 * width * height);
+              var data_fted2 = new Float64Array(2 * width * height);
+              var fft = new FFT.complex(width, false);
+              for (var i = 0; i < height; ++i) {
+                  fft.process(data_fted1, i * width, 1, data, i * width, 1, 'real');
+              }
+              fft = new FFT.complex(height, false);
+              for (var j = 0; j < width; ++j) {
+                  fft.process(data_fted2, j, width, data_fted1, j, width);
+              }
+
+              return {data: data_fted2, width: width, height: height};
+          }
+
+          function iFFT2D(sdata) {
+              var data = sdata.data;
+              var width = sdata.width;
+              var height = sdata.height;
+              var data_ifted1 = new Float64Array(2 * width * height);
+              var data_ifted2 = new Float64Array(2 * width * height);
+              var ifft = new FFT.complex(height, true);
+              for (var j = 0; j < width; ++j) {
+                  ifft.process(data_ifted1, j, width, data, j, width);
+              }
+              ifft = new FFT.complex(width, true);
+              for (var i = 0; i < height; ++i) {
+                  ifft.process(data_ifted2, i * width, 1, data_ifted1, i * width, 1);
+              }
+
+              return {data: data_ifted2, width: width, height: height};
+          }
+
+          function drawSpectrumData(sdata, canvas) {
+              withContextOf(canvas, function(ctx) {
+                  var idata = ctx.createImageData(canvas.width, canvas.height);
+                  var n = sdata.width * sdata.height;
+                  for (var i = 0; i < sdata.height; ++i) {
+                      for (var j = 0; j < sdata.width; ++j) {
+                          var k = i * sdata.width + j;
+                          var re = sdata.data[2 * k] / n;
+
+                          var i_ = (i + sdata.height / 2) % sdata.height;
+                          var j_ = (j + sdata.width / 2) % sdata.width;
+                          var k_ = i_ * sdata.width + j_;
+
+                          if (re >= 0) {
+                              idata.data[4 * k_ + 0] = 0;
+                              idata.data[4 * k_ + 1] = 0xff * re;
+                              idata.data[4 * k_ + 2] = 0;
+                          }
+                          else {
+                              idata.data[4 * k_ + 0] = 0xff * -re;
+                              idata.data[4 * k_ + 1] = 0;
+                              idata.data[4 * k_ + 2] = 0;
+                          }
+                          idata.data[4 * k_ + 3] = 0xff;
+                      }
+                  }
+                  ctx.putImageData(idata, 0, 0);
+              });
+          }
+
+          function drawReconstructedData(rdata, canvas) {
+              withContextOf(canvas, function(ctx) {
+                  var idata = ctx.createImageData(canvas.width, canvas.height);
+                  var n = rdata.width * rdata.height;
+                  for (var i = 0; i < rdata.height; ++i) {
+                      for (var j = 0; j < rdata.width; ++j) {
+                          var k = i * rdata.width + j;
+                          var re = rdata.data[2 * k] / n;
+                          idata.data[4 * k + 0] = re;
+                          idata.data[4 * k + 1] = re;
+                          idata.data[4 * k + 2] = re;
+                          idata.data[4 * k + 3] = 0xff;
+                      }
+                  }
+                  ctx.putImageData(idata, 0, 0);
+              });
+          }
+
+          function lowpass(sdata, r) {
+              for (var i = 0; i < sdata.height; ++i) {
+                  for (var j = 0; j < sdata.width; ++j) {
+                      var k = i * sdata.width + j;
+
+                      var i_ = (i + sdata.height / 2) % sdata.height - sdata.height / 2;
+                      var j_ = (j + sdata.width / 2) % sdata.width - sdata.width / 2;
+
+                      if (Math.sqrt(i_ * i_ + j_ * j_) > r) {
+                          sdata.data[2 * k] = 0;
+                          sdata.data[2 * k + 1] = 0;
+                      }
+                  }
+              }
+          }
+
+          function highpass(sdata, r) {
+              for (var i = 0; i < sdata.height; ++i) {
+                  for (var j = 0; j < sdata.width; ++j) {
+                      var k = i * sdata.width + j;
+
+                      var i_ = (i + sdata.height / 2) % sdata.height - sdata.height / 2;
+                      var j_ = (j + sdata.width / 2) % sdata.width - sdata.width / 2;
+
+                      if (Math.sqrt(i_ * i_ + j_ * j_) < r) {
+                          sdata.data[2 * k] = 0;
+                          sdata.data[2 * k + 1] = 0;
+                      }
+                  }
+              }
+          }
+
+          function update() {
+              var srcCanvas = $('canvas#src')[0];
+              var spectrumCanvas = $('canvas#spectrum')[0];
+              var reconstructionCanvas = $('canvas#recon')[0];
+              var pdata = getPixelData(srcCanvas);
+              var sdata = FFT2D(pdata);
+              if ($('input[type="radio"]:checked').val() === "lowpass") {
+                  var r = $('#radius_slider').slider('value');
+                  lowpass(sdata, r);
+              }
+              else if ($('input[type="radio"]:checked').val() === "highpass") {
+                  var r = $('#radius_slider').slider('value');
+                  highpass(sdata, r);
+              }
+              drawSpectrumData(sdata, spectrumCanvas);
+              var rdata = iFFT2D(sdata);
+              drawReconstructedData(rdata, reconstructionCanvas);
+          }
+
+          withContextOf($('canvas#src')[0], function(ctx) {
+              var img = new Image();
+              img.src = 'source.png';
+              img.onload = function() {
+                  ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);
+              };
+          });
+
+          $('#radius_slider').slider({min: 0, max: 150, value: 50});
+
+          $('input').on('change input', update);
+          $('#radius_slider').on('change slide', update);
+      });
+    </script>
+  </body>
+</html>
