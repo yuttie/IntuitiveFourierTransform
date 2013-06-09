@@ -29,12 +29,15 @@
 
           function getUserCoordinates(e) {
               var canvas = e.target;
-
+              var pos = $(canvas).offset();
               var scale = (canvas.width - 2 * margin) / (num_points - 1);
 
+              var x = e.pageX - pos.left;
+              var y = e.pageY - pos.top;
+
               return {
-                  x: (e.offsetX - margin)            / scale /  1,
-                  y: (e.offsetY - canvas.height / 2) / scale / -1
+                  x: (x - margin)            / scale /  1,
+                  y: (y - canvas.height / 2) / scale / -1
               };
           }
 
