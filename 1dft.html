@@ -127,8 +127,28 @@
               }
           }
 
-          $('canvas#src').on('mousedown mousemove', function(e) {
-              if (e.which != 1) return;
+          var button_pressed = false;
+          $('canvas#src').on('mousedown mousemove mouseup', function(e) {
+              switch (e.type) {
+              case 'mousedown':
+                  if (e.which === 1) {
+                      button_pressed = true;
+                  }
+                  else {
+                      return;
+                  }
+                  break;
+              case 'mousemove':
+                  if (!button_pressed) {
+                      return;
+                  }
+                  break;
+              case 'mouseup':
+                  if (e.which === 1) {
+                      button_pressed = false;
+                  }
+                  return;
+              }
               e.preventDefault();
 
               var c = getUserCoordinates(e);
@@ -145,8 +165,27 @@
               updateSpectrumView();
               updateReconstructionView();
           });
-          $('canvas#fted').on('mousedown mousemove', function(e) {
-              if (e.which != 1) return;
+          $('canvas#fted').on('mousedown mousemove mouseup', function(e) {
+              switch (e.type) {
+              case 'mousedown':
+                  if (e.which === 1) {
+                      button_pressed = true;
+                  }
+                  else {
+                      return;
+                  }
+                  break;
+              case 'mousemove':
+                  if (!button_pressed) {
+                      return;
+                  }
+                  break;
+              case 'mouseup':
+                  if (e.which === 1) {
+                      button_pressed = false;
+                  }
+                  return;
+              }
               e.preventDefault();
 
               var c = getUserCoordinates(e);
