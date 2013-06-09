@@ -232,6 +232,7 @@
               img.src = opts.image;
               img.onload = function() {
                   ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);
+                  update();
               };
           });
 
