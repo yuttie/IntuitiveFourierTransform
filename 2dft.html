@@ -35,6 +35,29 @@
       $(document).ready(function() {
           "use strict";
 
+          var defaultOptions = {
+              'image': "source.png"
+          };
+
+          // process options
+          function parseOptions(defaultOpts) {
+              var opts = {};
+              $.each(window.location.search.slice(1).split("&"), function(_, param) {
+                  var kv = param.split("=");
+
+                  switch (kv[0]) {
+                  case "image":
+                      opts.image = decodeURIComponent(kv[1]);
+                      break;
+                  case '':
+                      break;
+                  default:
+                      aleart('Unknown option: "' + kv[0] + '=' + kv[1] + '"');
+                  }
+              });
+              return $.extend(true, {}, defaultOptions, opts);
+          }
+
           function withContext(canvas, f) {
               var ctx = canvas.getContext('2d');
               ctx.save();
@@ -203,9 +226,10 @@
               drawReconstructedData(rdata, reconstructionCanvas);
           }
 
+          var opts = parseOptions();
           withContextCleared($('canvas#src')[0], function(ctx) {
               var img = new Image();
-              img.src = 'source.png';
+              img.src = opts.image;
               img.onload = function() {
                   ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);
               };
